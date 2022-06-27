@@ -1,4 +1,5 @@
 const express = require('express')
+let bodyParser = require('body-parser')
 
 const app = express();
 
@@ -29,16 +30,30 @@ let ans = {
     }
   ]
 }
+
+let ans1={
+  data_list:[
+    {answer: "hello小命！"}
+  ],
+  err_code: 0,
+  err_msg: "success"
+}
 app.get('/', (req, res) => {
   // console.log(req.header("appid"));
   console.log(req.params);
   res.json("hello world");
 });
 
-app.post('/try', (req, res) => {
+// 解析提交的json参数
+let jsonParser = bodyParser.json()
+// 解析提交的form表单参数
+let urlencodedParser = bodyParser.urlencoded({ extended: true })
+
+app.post('/try', urlencodedParser, (req, res) => {
   // console.log(req.header("appid"));
   // console.log(req.params);
-  res.json(ans);
+  ans1.data_list[0].answer = "hello! The words that you enter is！" + JSON.stringify(req.body.keyword);
+  res.json(ans1);
 });
 
 app.listen(3000, function() {
