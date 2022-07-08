@@ -1,5 +1,8 @@
-const express = require('express')
+import SessionController from "./sessionVM/sessionController.js"
+import express from "express";
 const app = express();
+
+let sessionController = new SessionController();
 
 // parse application/x-www-form-urlencoded
 app.use(express.urlencoded({extended: false}))
@@ -23,6 +26,10 @@ app.post('/try', (req, res) => {
   }
   let a = handleRequestBody(req.body);
   ans1.data_list[0].answer = "hello! The words that you enter is:"+a.keyword;
+  let result = sessionController.runCmdOnVM(a["_3rdparth_proxy_http_header_"].uid, a["_3rdparth_proxy_http_header_"].bid, a.keyword);
+  ans1.data_list[0].answer += "\n Your UserID is: "+a["_3rdparth_proxy_http_header_"].uid;
+  ans1.data_list[0].answer += "\n Your BotID is: "+a["_3rdparth_proxy_http_header_"].bid;
+  ans1.data_list[0].answer += "\n Your Running Result is: "+result;
   res.json(ans1);
 });
 
