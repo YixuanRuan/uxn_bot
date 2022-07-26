@@ -1,0 +1,506 @@
+( uxnlin )
+
+|10 @Console &vector $2 &read $1 &pad $5 &write $1 &error $1
+|a0 @File &vector $2 &success $2 &stat $2 &delete $1 &append $1 &name $2 &length $2 &read $2 &write $2
+
+|0000
+
+@src $40
+@token $30 &last $30 &last2 $30
+@stats &lines $2 &tokens $2
+@mute $1
+@staticseq $1
+
+|0100
+
+	;on-console .Console/vector DEO2
+
+BRK
+
+@on-console ( -> )
+
+	;src STH2
+	( filepath )
+	.Console/read DEI
+	DUP #20 LTH OVR #7f GTH ORA ,&end JCN
+	STH2kr ;slen JSR2 #003f GTH2 ,&end JCN
+		STH2r ;sput JSR2 BRK
+		&end
+	POP
+	( assemble )
+	STH2r .File/name DEO2
+	#0001 .File/length DEO2
+	&stream
+		;&c .File/read DEO2 [ LIT &c $1 ] ,walk JSR
+		.File/success DEI2 ORA ,&stream JCN
+	( stats )
+	;linted-txt ;print-str JSR2
+	;src ;print-str JSR2 #2018 DEO
+	;with-txt ;print-str JSR2 #2018 DEO
+	.stats/tokens LDZ2 ;print-dec JSR2 #2018 DEO
+	;tokens-txt ;print-str JSR2 LIT ', #18 DEO #2018 DEO
+	.stats/lines LDZ2 ;print-dec JSR2 #2018 DEO
+	;lines-txt ;print-str JSR2 LIT '. #18 DEO #0a18 DEO
+	( halt )
+	#010f DEO
+
+BRK
+
+@walk ( char -- )
+
+	( tokens ) .stats/tokens LDZ2k INC2 ROT STZ2
+	( lines ) #00 OVR #0a EQU .stats/lines STHk LDZ2 ADD2 STHr STZ2
+
+	LIT '( EQUk NIP ,&toggle JCN
+	LIT ') EQUk NIP ,&toggle JCN
+	LIT '[ EQUk NIP ,&mute JCN
+	LIT '] EQUk NIP ,&unmute JCN
+	[ LIT &sleep $1 ] ,&skip JCN
+	[ #20 ] GTHk NIP ,&append JCN
+	;token ;slen JSR2 ORA ,parse JCN
+	&skip
+	POP
+
+JMP2r
+	&toggle #29 SUB ,&sleep STR JMP2r
+	&append ;token ;sput JMP2
+	&mute POP #01 .mute STZ JMP2r
+	&unmute POP #00 .mute STZ JMP2r
+
+@parse ( char -- recipe* )
+
+	( char ) POP
+
+	( 2 elements )
+
+	;rules2/end ;rules2
+	&loop
+		( a ) DUP2 ;token/last ;scmp-wild JSR2 STH ;scap JSR2 INC2
+		( b ) DUP2 ;token ;scmp-wild JSR2 STH ;scap JSR2 INC2
+		STH2r #0101 NEQ2 ,&skip JCN
+		.mute LDZ ,&skip JCN
+			LDA2k ;warn JSR2
+			&skip
+		INC2 INC2 GTH2k ,&loop JCN
+	POP2 POP2
+
+	( 3 elements )
+
+	;rules3/end ;rules3
+	&loop3
+		( a ) DUP2 ;token/last2 ;scmp-wild JSR2 STH ;scap JSR2 INC2
+		( b ) DUP2 ;token/last ;scmp-wild JSR2 STH ;scap JSR2 INC2
+		( c ) DUP2 ;token ;scmp-wild JSR2 STH ;scap JSR2 INC2
+		ADDr ADDr STHr #03 NEQ ,&skip3 JCN
+		.mute LDZ ,&skip3 JCN
+			LDA2k ;warn3 JSR2
+			&skip3
+		INC2 INC2 GTH2k ,&loop3 JCN
+	POP2 POP2
+
+	( static arithmetic sequence )
+
+	;token ;is-arithmetic JSR2 .staticseq LDZ #0101 NEQ2 ,&no-seq JCN
+		;static ;warn JSR2
+		&no-seq
+	( set arithmetic sequence )
+	;token LDA ;token/last LDA LIT '# LIT '# EQU2 .staticseq STZ
+
+	( literal duplicates )
+
+	;token ;token/last ;scmp-wild JSR2 #00 EQU ,&no-litseq JCN
+	;token ;is-litshort JSR2 #00 EQU ,&no-litseq JCN
+		;static-dup ;warn JSR2
+		&no-litseq
+
+	( cleanup )
+
+	;token/last ;token/last2 #0030 ;mcpy JSR2
+	;token 
+		DUP2 ;token/last #0030 ;mcpy JSR2 
+		#0030 ;mclr JSR2
+
+JMP2r
+
+@warn ( str* -- )
+
+	LIT '> #18 DEOk DEO #2018 DEO
+	;token/last ;print-str JSR2 #2018 DEO
+	;token ;print-str JSR2 #2018 DEO
+	LIT '" #18 DEO ;print-str JSR2 LIT '" #18 DEO
+	( line )
+	;line-txt ;print-str JSR2
+	.stats/lines LDZ2 INC2k ;print-dec JSR2
+	LIT '< #18 DEO ;print JSR2 LIT '> #18 DEO #0a18 DEO
+
+JMP2r
+
+@warn3 ( str* -- )
+
+	LIT '> #18 DEOk DEO #2018 DEO
+	;token/last2 ;print-str JSR2 #2018 DEO
+	;token/last ;print-str JSR2 #2018 DEO
+	;token ;print-str JSR2 #2018 DEO
+	LIT '" #18 DEO ;print-str JSR2 LIT '" #18 DEO
+	( line )
+	;line-txt ;print-str JSR2
+	.stats/lines LDZ2 INC2k ;print-dec JSR2
+	LIT '< #18 DEO ;print JSR2 LIT '> #18 DEO #0a18 DEO
+
+JMP2r
+
+@is-arithmetic ( token* -- flag )
+
+	STH2
+	;ariopcodes/end ;ariopcodes
+	&loop
+		DUP2 STH2kr ;scmp3 JSR2 ,&found JCN
+		#0004 ADD2 GTH2k ,&loop JCN
+	POP2 POP2
+	POP2r
+	#00 
+
+JMP2r
+	&found POP2 POP2 POP2r #01 JMP2r
+
+@scap ( str* -- end* ) LDAk #00 NEQ JMP JMP2r &w INC2 LDAk ,&w JCN JMP2r
+@sput ( chr str* -- ) ,scap JSR STA JMP2r
+@slen ( str* -- len* ) DUP2 ,scap JSR SWP2 SUB2 JMP2r
+@scmp ( a* b* -- f ) STH2 &l LDAk LDAkr STHr ANDk #00 EQU ,&e JCN NEQk ,&e JCN POP2 INC2 INC2r ,&l JMP &e NIP2 POP2r EQU JMP2r
+@mclr ( src* len* -- ) OVR2 ADD2 SWP2 &l STH2k #00 STH2r STA INC2 GTH2k ,&l JCN POP2 POP2 JMP2r
+@mcpy ( src* dst* len* -- ) SWP2 STH2 OVR2 ADD2 SWP2 &loop LDAk STH2kr STA INC2r INC2 GTH2k ,&loop JCN POP2 POP2 POP2r JMP2r
+
+@scmp-wild ( a* b* -- flag )
+
+	OVR2 OVR2 ;scmp JSR2 ,&pass JCN
+
+	SWP2 LDAk LIT '# NEQ ,&no-lit JCN
+		INC2k LDA LIT '_ NEQ ,&no-lit JCN
+			DUP2 ;slen JSR2 #0003 NEQ2 ,&no-byte JCN
+				OVR2 ;is-litbyte JSR2 ,&pass JCN
+				&no-byte
+			DUP2 ;slen JSR2 #0005 NEQ2 ,&no-short JCN
+				OVR2 ;is-litshort JSR2 ,&pass JCN
+				&no-short
+		&no-lit
+	POP2 POP2 #00
+
+JMP2r
+	&pass POP2 POP2 #01 JMP2r
+
+@scmp3 ( a[3]* b[3]* -- flag )
+
+	LDA2k STH2 INC2 INC2 SWP2
+	LDA2k STH2 INC2 INC2 EQU2r
+	LDA STH LDA STH EQUr
+	ANDr STHr
+
+JMP2r
+
+@is-litbyte ( str* -- flag )
+
+	STH2k ;slen JSR2 #0003 EQU2
+	STH2r LDA LIT '# EQU
+	AND
+
+JMP2r
+
+@is-litshort ( str* -- flag )
+
+	STH2k ;slen JSR2 #0005 EQU2
+	STH2r LDA LIT '# EQU
+	AND
+
+JMP2r
+
+@print ( short* -- )
+
+	SWP ,&byte JSR
+	&byte ( byte -- ) DUP #04 SFT ,&char JSR
+	&char ( char -- ) #0f AND DUP #09 GTH #27 MUL ADD #30 ADD #18 DEO
+
+JMP2r
+
+@print-str ( str* -- )
+
+	&while
+		LDAk .Console/write DEO
+		INC2 LDAk ,&while JCN
+	POP2
+
+JMP2r
+
+@print-dec ( short* -- )
+
+	#00 ,&z STR
+	#2710 ,&parse JSR
+	#03e8 ,&parse JSR
+	#0064 ,&parse JSR
+	#000a ,&parse JSR
+	NIP
+	&emit
+		DUP [ LIT &z $1 ] EQU ,&skip JCN
+		#ff ,&z STR DUP #30 ADD #18 DEO
+		&skip
+	POP
+
+JMP2r
+	&parse
+		DIV2k DUP ,&emit JSR MUL2 SUB2
+	JMP2r
+
+@ariopcodes
+	"ADD $1 "SUB $1 "MUL $1 "DIV $1
+	"GTH $1 "LTH $1 "EQU $1 "NEQ $1
+	"AND $1 "ORA $1 "EOR $1 "SFT $1
+	"INC $1
+	&end
+
+@line-txt ", 20 "at 20 "line: 20 $1
+@linted-txt "Linted 20 $1
+@with-txt "with $1
+@tokens-txt "tokens $1
+@lines-txt "lines $1
+
+@redundance "Redundance $1 ( opcode effects cancel each other )
+@static "Static-Arithmetic $1 ( arithmetic opcode on two static literals )
+@static-dup "Static-Duplicate $1 ( two identical static literals )
+@keep "Unkept $1 ( opcode should use non-destructive keep mode )
+@unsafe "Unsafe $1 ( bitwise opcode used in relative jump )
+@unstashed "Unstashed $1 ( literal was created on the wrong stack )
+@combine "Combine $1
+
+@inc "INC $1 @inc2 "INC2 $1
+@inc-twice "INC 20 "INC $1
+@inc2-twice "INC2 20 "INC2 $1
+@pop2 "POP2 $1
+@pop2r "POP2r $1
+@ovrk "OVRk $1
+@ovr2k "OVR2k $1
+@swpk "SWPk $1
+@equk "EQUk $1
+@neqk "NEQk $1
+@gthk "GTHk $1
+@lthk "LTHk $1
+@addk "ADDk $1
+@subk "SUBk $1
+@mulk "MULk $1
+@divk "DIVk $1
+@andk "ANDk $1
+@orak "ORAk $1
+@eork "EORk $1
+@sftk "SFTk $1
+@inck "INCk $1
+@inc2k "INC2k $1
+@ora "ORA $1
+@nip "NIP $1 @nip2 "NIP2 $1
+@and "AND $1
+@sft01 "#01 20 "SFT $1
+@sft02 "#02 20 "SFT $1
+@sft03 "#03 20 "SFT $1
+@sft04 "#04 20 "SFT $1
+@sft05 "#05 20 "SFT $1
+@sft06 "#06 20 "SFT $1
+@sft07 "#07 20 "SFT $1
+@sft10 "#10 20 "SFT $1
+@sft20 "#20 20 "SFT $1
+@sft30 "#30 20 "SFT $1
+@sft40 "#40 20 "SFT $1
+@sft50 "#50 20 "SFT $1
+@sft60 "#60 20 "SFT $1
+@sft70 "#70 20 "SFT $1
+@sft201 "#01 20 "SFT2 $1
+@sft202 "#02 20 "SFT2 $1
+@sft203 "#03 20 "SFT2 $1
+@sft204 "#04 20 "SFT2 $1
+@sft205 "#05 20 "SFT2 $1
+@sft206 "#06 20 "SFT2 $1
+@sft207 "#07 20 "SFT2 $1
+@sft210 "#10 20 "SFT2 $1
+@sft220 "#20 20 "SFT2 $1
+@sft230 "#30 20 "SFT2 $1
+@sft240 "#40 20 "SFT2 $1
+@sft250 "#50 20 "SFT2 $1
+@sft260 "#60 20 "SFT2 $1
+@sft270 "#70 20 "SFT2 $1
+@00ovr "#00 20 "OVR $1
+@0000ovr2 "#0000 20 "OVR2 $1
+@dup2 "DUP2 $1
+@dupadd "DUP 20 "ADD $1
+@dup2add2 "DUP2 20 "ADD2 $1
+@orak00equ "ORAk 20 "#00 20 "EQU $1
+@rotswp "ROT 20 "SWP $1
+@rot2swp2 "ROT2 20 "SWP2 $1
+
+@rules2
+
+	"STH   $1 "STHr   $1 :redundance
+	"STH2  $1 "STH2r  $1 :redundance
+	"STHr  $1 "STH    $1 :redundance
+	"STH2r $1 "STH2   $1 :redundance
+	"DUP   $1 "SWP    $1 :redundance
+	"DUP2  $1 "SWP2   $1 :redundance
+	"SWP   $1 "SWP    $1 :redundance
+	"SWP2  $1 "SWP2   $1 :redundance
+	"SWPr  $1 "SWPr   $1 :redundance
+	"SWP2r $1 "SWP2r  $1 :redundance
+	"DUP   $1 "POP    $1 :redundance
+	"DUP2  $1 "POP2   $1 :redundance
+	"STH   $1 "STHkr  $1 :redundance
+	"STH2  $1 "STH2kr $1 :redundance
+	"STHr  $1 "STHk   $1 :redundance
+	"STH2r $1 "STH2k  $1 :redundance
+	"JMP2r $1 "JMP2r  $1 :redundance
+	"BRK   $1 "BRK    $1 :redundance
+	"SWP   $1 "ADD    $1 :redundance
+	"SWP2  $1 "ADD2   $1 :redundance
+	"SWP   $1 "MUL    $1 :redundance
+	"SWP2  $1 "MUL2   $1 :redundance
+	"SWP   $1 "EQU    $1 :redundance
+	"SWP2  $1 "EQU2   $1 :redundance
+	"SWP   $1 "NEQ    $1 :redundance
+	"SWP2  $1 "NEQ2   $1 :redundance
+	"#ff   $1 "GTH    $1 :redundance
+	"#ffff $1 "GTH2   $1 :redundance
+	"#00   $1 "LTH    $1 :redundance
+	"#0000 $1 "LTH2   $1 :redundance
+	"#00   $1 "ADD    $1 :redundance
+	"#0000 $1 "ADD2   $1 :redundance
+	"#00   $1 "SUB    $1 :redundance
+	"#0000 $1 "SUB2   $1 :redundance
+	"#01   $1 "MUL    $1 :redundance
+	"#0001 $1 "MUL2   $1 :redundance
+	"#01   $1 "DIV    $1 :redundance
+	"#0001 $1 "DIV2   $1 :redundance
+	"#ff   $1 "AND    $1 :redundance
+	"#ffff $1 "AND2   $1 :redundance
+	"#00   $1 "ORA    $1 :redundance
+	"#0000 $1 "ORA2   $1 :redundance
+	"#00   $1 "EOR    $1 :redundance
+	"#0000 $1 "EOR2   $1 :redundance
+	"#00   $1 "SFT    $1 :redundance
+	"#00   $1 "SFT2   $1 :redundance
+	"AND   $1 "JMP    $1 :unsafe
+	"ORA   $1 "JMP    $1 :unsafe
+	"EOR   $1 "JMP    $1 :unsafe
+	"#__   $1 "STH    $1 :unstashed
+	"#____ $1 "STH2   $1 :unstashed
+	"DUP   $1 "DUP    $1 :keep
+	"DUP2  $1 "DUP2   $1 :keep
+	"DUP   $1 "INC    $1 :keep
+	"DUP2  $1 "INC2   $1 :keep
+	"DUP   $1 "STH    $1 :keep
+	"DUP2  $1 "STH2   $1 :keep
+	"DUP   $1 "LDA    $1 :keep
+	"DUP2  $1 "LDA2   $1 :keep
+	"DUP   $1 "LDR    $1 :keep
+	"DUP2  $1 "LDR2   $1 :keep
+	"DUP   $1 "LDZ    $1 :keep
+	"DUP2  $1 "LDZ2   $1 :keep
+	"DUP   $1 "DEI    $1 :keep
+	"DUP2  $1 "DEI2   $1 :keep
+	"DUP2  $1 "SWP2   $1 :swpk
+	"DUP2  $1 "OVR    $1 :ovrk
+	"OVR   $1 "DUP2   $1 :ovrk
+	"DUP2  $1 "EQU    $1 :equk
+	"DUP2  $1 "NEQ    $1 :neqk
+	"DUP2  $1 "GTH    $1 :gthk
+	"DUP2  $1 "LTH    $1 :lthk
+	"DUP2  $1 "ADD    $1 :addk
+	"DUP2  $1 "SUB    $1 :subk
+	"DUP2  $1 "MUL    $1 :mulk
+	"DUP2  $1 "DIV    $1 :divk
+	"DUP2  $1 "AND    $1 :andk
+	"DUP2  $1 "ORA    $1 :orak
+	"DUP2  $1 "EOR    $1 :eork
+	"DUP2  $1 "SFT    $1 :sftk
+	"SWP   $1 "POP    $1 :nip
+	"SWP2  $1 "POP2   $1 :nip2
+	"#01   $1 "ADD    $1 :inc
+	"#0001 $1 "ADD2   $1 :inc2
+	"#02   $1 "ADD    $1 :inc-twice
+	"#0002 $1 "ADD2   $1 :inc2-twice
+	"POP   $1 "POP    $1 :pop2
+	"NIP   $1 "POP    $1 :pop2
+	"POPr  $1 "POPr   $1 :pop2r
+	"POP   $1 "NIP    $1 :pop2
+	"OVR   $1 "OVR    $1 :dup2
+	"#0101 $1 "EQU2   $1 :and
+	"#0000 $1 "NEQ2   $1 :ora
+	"#0000 $1 "GTH2   $1 :ora
+	"#02   $1 "DIV    $1 :sft01
+	"#0002 $1 "DIV2   $1 :sft201
+	"#04   $1 "DIV    $1 :sft02
+	"#0004 $1 "DIV2   $1 :sft202
+	"#08   $1 "DIV    $1 :sft03
+	"#0008 $1 "DIV2   $1 :sft203
+	"#10   $1 "DIV    $1 :sft04
+	"#0010 $1 "DIV2   $1 :sft204
+	"#20   $1 "DIV    $1 :sft05
+	"#0020 $1 "DIV2   $1 :sft205
+	"#40   $1 "DIV    $1 :sft06
+	"#0040 $1 "DIV2   $1 :sft206
+	"#80   $1 "DIV    $1 :sft07
+	"#0080 $1 "DIV2   $1 :sft207
+	"#02   $1 "MUL    $1 :sft10
+	"#0002 $1 "MUL2   $1 :sft210
+	"#04   $1 "MUL    $1 :sft20
+	"#0004 $1 "MUL2   $1 :sft220
+	"#08   $1 "MUL    $1 :sft30
+	"#0008 $1 "MUL2   $1 :sft230
+	"#10   $1 "MUL    $1 :sft40
+	"#0010 $1 "MUL2   $1 :sft240
+	"#20   $1 "MUL    $1 :sft50
+	"#0020 $1 "MUL2   $1 :sft250
+	"#40   $1 "MUL    $1 :sft60
+	"#0040 $1 "MUL2   $1 :sft260
+	"#80   $1 "MUL    $1 :sft70
+	"#0080 $1 "MUL2   $1 :sft270
+	"#00   $1 "#01    $1 :inck
+	"#0000 $1 "#0001  $1 :inc2k
+	"#10   $1 "SFT    $1 :dupadd
+	"#10   $1 "SFT2   $1 :dup2add2
+
+&end
+
+@rules3
+
+	"DUP  $1 "#__   $1 "SWP   $1 :00ovr
+	"DUP2 $1 "#____ $1 "SWP2  $1 :0000ovr2
+	"ROT  $1 "ROT   $1 "ROT   $1 :redundance
+	"ROT2 $1 "ROT2  $1 "ROT2  $1 :redundance
+	"SFT  $1 "#__   $1 "SFT   $1 :combine
+	"SFT2 $1 "#__   $1 "SFT   $1 :combine
+	"SFT  $1 "#__   $1 "SFT2  $1 :combine
+	"SFT2 $1 "#__   $1 "SFT2  $1 :combine
+	"OVR  $1 "OVR   $1 "EQU   $1 :keep
+	"OVR2 $1 "OVR2  $1 "EQU2  $1 :keep
+	"OVR  $1 "OVR   $1 "NEQ   $1 :keep
+	"OVR2 $1 "OVR2  $1 "NEQ2  $1 :keep
+	"OVR  $1 "OVR   $1 "GTH   $1 :keep
+	"OVR2 $1 "OVR2  $1 "GTH2  $1 :keep
+	"OVR  $1 "OVR   $1 "LTH   $1 :keep
+	"OVR2 $1 "OVR2  $1 "LTH2  $1 :keep
+	"OVR  $1 "OVR   $1 "ADD   $1 :keep
+	"OVR2 $1 "OVR2  $1 "ADD2  $1 :keep
+	"OVR  $1 "OVR   $1 "SUB   $1 :keep
+	"OVR2 $1 "OVR2  $1 "SUB2  $1 :keep
+	"OVR  $1 "OVR   $1 "MUL   $1 :keep
+	"OVR2 $1 "OVR2  $1 "MUL2  $1 :keep
+	"OVR  $1 "OVR   $1 "DIV   $1 :keep
+	"OVR2 $1 "OVR2  $1 "DIV2  $1 :keep
+	"OVR  $1 "OVR   $1 "AND   $1 :keep
+	"OVR2 $1 "OVR2  $1 "AND2  $1 :keep
+	"OVR  $1 "OVR   $1 "ORA   $1 :keep
+	"OVR2 $1 "OVR2  $1 "ORA2  $1 :keep
+	"OVR  $1 "OVR   $1 "EOR   $1 :keep
+	"OVR2 $1 "OVR2  $1 "EOR2  $1 :keep
+	"OVR  $1 "OVR   $1 "SWP   $1 :keep
+	"OVR2 $1 "OVR2  $1 "SWP2  $1 :keep
+	"DUP2 $1 "#0000 $1 "EQU2  $1 :orak00equ
+	"OVR  $1 "OVR   $1 "OVR   $1 :ovrk
+	"OVR2 $1 "OVR2  $1 "OVR2  $1 :ovr2k
+	"STH  $1 "SWP   $1 "STHr  $1 :rotswp
+	"STH2 $1 "SWP2  $1 "STH2r $1 :rot2swp2
+
+&end
