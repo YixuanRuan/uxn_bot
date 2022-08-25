@@ -3,7 +3,6 @@ import grammarRouter from "./router/grammar.js";
 import express from "express";
 const app = express();
 
-
 // parse application/x-www-form-urlencoded
 app.use(express.urlencoded({extended: false}))
 // parse application/json
