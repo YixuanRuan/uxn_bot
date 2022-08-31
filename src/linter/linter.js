@@ -12,9 +12,10 @@ class Linter{
     let that = this;
     return new Promise((resolve, reject) => {
       that.saveFile();
+      that.readFile();
       let out="";
       let err="";
-      const cmd = CP.exec(`/app/uxn/bin/uxncli /app/uxn/bin/uxnlin.rom ${that._userID}.tal`);
+      const cmd = CP.exec(`/app/uxn/bin/uxncli /app/uxn/bin/uxnlin.rom /app/${that._userID}.tal`);
       cmd.stdout.on('data', function(data) {
         out += data.toString()
       })
@@ -25,28 +26,30 @@ class Linter{
         resolve(out)
       })
       cmd.on('error', function(err) { reject(err) })
-      that.deleteFile();
+      setTimeout(()=>{
+        that.deleteFile();
+      }, 2000);
     })
   }
 
   saveFile(){
-    FS.writeFile(`./${this._userID}.tal`,this._data,function(err){
+    FS.writeFile(`/app/${this._userID}.tal`,this._data,function(err){
       console.log(err);
     })
   }
 
   readFile(){
-    FS.readFile(`./${userID}.tal`,'utf8',function(err,data){
+    FS.readFile(`/app/${this._userID}.tal`,'utf8',function(err,data){
       if(err){
         return console.log('Read File Fail！'+err.message)
       }
-      console.log('Read File Success！'+data);
+      console.log('Read File Success！:'+data);
       return data;
     })
   }
 
   deleteFile(){
-    FS.unlinkSync(`./${this._userID}.tal`);
+    FS.unlinkSync(`/app/${this._userID}.tal`);
   }
 }
 
