@@ -11,6 +11,6 @@ app.use(express.json())
 app.use("/vm", vmRouter);
 app.use("/grammar", grammarRouter);
 
-app.listen(3000, function () {
-  console.log("Example app listening at http://localhost:3000")
+app.listen(4000, function () {
+  console.log("Example app listening at http://localhost:4000")
 });

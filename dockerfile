@@ -10,5 +10,5 @@ WORKDIR /app/uxn
 RUN ./build.sh
 RUN ./bin/uxnasm ./uxnlin.tal ./bin/uxnlin.rom
 WORKDIR /app
-EXPOSE 3000
+EXPOSE 4000
 CMD node /app/app.js
