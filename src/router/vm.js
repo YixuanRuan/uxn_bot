@@ -28,4 +28,19 @@ vmRouter.post('/interpret', async function (req, res, next) {
   res.json(ans1);
 });
 
+vmRouter.post('/interpretFake', async function (req, res, next) {
+  let ans1 = {
+    data_list: [
+      {answer: "hello！"}
+    ],
+    err_code: 0,
+    err_msg: "success"
+  }
+  let a = req.body;
+  ans1.data_list[0].answer = "Hello! The instruction you enter is:" + a.keyword;
+  let result = sessionController.runCmdOnVM("fakeUserID", "fakeBotID", a.keyword);
+  ans1.data_list[0].answer += "\n Your Running Result is: " + result;
+  res.json(ans1);
+});
+
 export default vmRouter;

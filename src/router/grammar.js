@@ -39,4 +39,33 @@ grammarRouter.post('/lint', async function(req, res, next) {
   res.json(ans1);
 });
 
+
+grammarRouter.post('/lintFake', async function(req, res, next) {
+  let ans1 = {
+    data_list: [
+      {answer: "hello！"}
+    ],
+    err_code: 0,
+    err_msg: "success"
+  }
+  let a = req.body;
+  console.log("\n");
+  console.log("################################");
+  console.log("linting!!!!!");
+  let linter = new Linter("fakeUserID", a.keyword);
+  let out = "";
+  let err = "Congrats! No Error or Warning Found";
+  await linter.lintFile().then((result)=>{
+    out = result;
+    console.log(out);
+  }).catch((error)=>{
+    err = error;
+    console.log(err);
+  });
+  console.log("#################################\n");
+  ans1.data_list[0].answer += "\n Your Lint Result is: \n" + out.trim();
+  ans1.data_list[0].answer += "\n Your Lint Error is: \n" + err;
+  res.json(ans1);
+});
+
 export default grammarRouter;
