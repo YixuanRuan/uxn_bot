@@ -5,6 +5,8 @@ You can try UXNBot directly at [UXNBot for web](https://openai.weixin.qq.com/web
 
 Or you can scan QRCode to try it on mobile phones.
 
+Just Type "Can I Try UXN?" to start with.
+
 ![QRCode](./images/qrcode.png)
 # Install Yourself
 This project is developed using IntelliJ WebStorm.
